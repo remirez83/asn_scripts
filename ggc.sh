@@ -4,44 +4,44 @@
 #                                                                       #
 #       mail = remigiusz.stojka@atos.net                                #
 #       CREATED  = 07/12/2021                                           #
-#       MODIFIED = 12/01/2023                                           #
-#       VERSION = 2.0                                                   #
+#       MODIFIED = 09/04/2024                                           #
+#	VERSION = 2.2							#
 #                                                                       #
 #########################################################################
 
 d='saacon';
-logfile='ggc.log';
+logfile="$HOME/ggc.log"
 type_=0;
 
 source /opt/DirX/iddirx/.alias 2>/dev/null
 shopt -s expand_aliases 2>/dev/null
 
 print_to_log(){
-        printf "$(date '+%Y/%m/%d %H:%M') => $1\n"
+	printf "$(date '+%Y/%m/%d %H:%M') => $1\n"
 }
 
 gen_group_name(){
 if [[ -z "${gn}" ]] && [[ -n "$permission" ]] && [[ -n "$parameter" ]]
 then
-        p=$(echo $permission | sed -e 's/(//g' -e 's/)//g');
-        gn="ASN-IAM--${p:0:36}--${parameter:0:17}";
-                printf "\n\nGroup Name was not deliberately specified with '-n' option, thus I have generated the name for you. Is below name ok?:\n\n\t$gn\n\n\n\t\t\t\t[ YES | NO ] / [ Y | N ]\t";
-                read answer;
-                printf "\n\n";
-                if [[ `echo $answer | tr '[:upper:]' '[:lower:]'` == "y" ]] || [[ `echo $answer | tr '[:upper:]' '[:lower:]'` == "yes" ]]; then
-                        group_name=$gn;
-                else
-                        printf "OK then, please re-run the script and specify Group Name yourself with '-n' option\n\n";
-                        print_to_log "ERR: RC 13 - Auto-Generated Group name - $gn was not accepted by the user" | tee -a $logfile;
-                        exit 1;
-                fi;
-elif [[ -n "$gn" ]] && [[ -n "$permission" ]] && [[ -n "$parameter" ]] && [[ "$(echo $gn | wc -c)" -le 64 ]]
+	p=$(echo $permission | sed -e 's/(//g' -e 's/)//g');
+	gn="ASN-IAM--${p:0:36}--${parameter:0:17}";
+		printf "\n\nGroup Name was not deliberately specified with '-n' option, thus I have generated the name for you. Is below name ok?:\n\n\t$gn\n\n\n\t\t\t\t[ YES | NO ] / [ Y | N ]\t"; 
+		read answer; 
+		printf "\n\n"; 
+		if [[ `echo $answer | tr '[:upper:]' '[:lower:]'` == "y" ]] || [[ `echo $answer | tr '[:upper:]' '[:lower:]'` == "yes" ]]; then
+			group_name=$gn;
+		else
+			printf "OK then, please re-run the script and specify Group Name yourself with '-n' option\n\n";
+			print_to_log "ERR: RC 13 - Auto-Generated Group name - $gn was not accepted by the user" | tee -a $logfile;
+			exit 1;
+		fi;
+elif [[ -n "$gn" ]] && [[ -n "$permission" ]] && [[ -n "$parameter" ]] && [[ "$(echo -n $gn | wc -c)" -le 64 ]]
 then
-                group_name=$gn;
+		group_name=$gn;
 elif [[ -n "$gn" ]] && [[ -n "$permission" ]] && [[ -n "$parameter" ]]
 then
-        print_to_log "ERR: RC 1 - Group name - $gn is too long or incorrect" | tee -a $logfile;
-        exit 1;
+	print_to_log "ERR: RC 1 - Group name - $gn is too long or incorrect" | tee -a $logfile;
+	exit 1;
 fi
 }
 
@@ -49,10 +49,10 @@ gen_dien(){
 dien="cn=${group_name},$group_base"
 if [[ $(dxim -b "$dien" -s base 1 | grep ^dn | wc -l) -eq 0 ]]
 then
-        primarykey="cn=${group_name},$pk_group_base"
+	primarykey="cn=${group_name},$pk_group_base"
 else
-        print_to_log "ERR: RC 2 - Group: $gn in Domain: $domina exists" | tee -a $logfile;
-        exit 2;
+	print_to_log "ERR: RC 2 - Group: $gn in Domain: $domina exists" | tee -a $logfile;
+	exit 2;
 fi;
 
 }
@@ -66,22 +66,22 @@ get_user_id(){
 user_ajdi=$(grep "^$(logname)" /etc/passwd | cut -d':' -f5 | sed -e 's/ IAM Managed//g');
 if [[ "$(echo "$user_ajdi" | tr '[:upper:]' '[:lower:]')" == "iddirx" ]] || [[ "$(echo "$user_ajdi" | tr '[:upper:]' '[:lower:]')" == "spdirx" ]] || [[ "$(echo "$user_ajdi" | tr '[:upper:]' '[:lower:]')" == "root" ]] || [[ "$(echo "$user_ajdi" | tr '[:upper:]' '[:lower:]')" == "nobody" ]] || [[ "$(echo "$user_ajdi" | tr '[:upper:]' '[:lower:]')" == "test" ]] || [[ $(grep "^$(logname)" /etc/passwd | cut -d':' -f3) -lt 50000 ]]
 then
-        print_to_log "ERR: RC 4 - Script can't be run as $user_ajdi, please run it from your personal account" | tee -a $logfile;
-        exit 4
+	print_to_log "ERR: RC 4 - Script can't be run as $user_ajdi, please run it from your personal account" | tee -a $logfile;
+	exit 4
 fi
 }
 
 get_permission_dn(){
 if [[ -n "$permission" ]]
 then
-        perm_dn=$(dxim -b 'cn=Permissions,cn=ASN-IAM-Central' "(&(objectclass=dxrPermission)(cn=$(echo $permission | sed -e 's/(/\\(/g' -e 's/)/\\)/g')))" 1 | head -1 | cut -d' ' -f2-);
+	perm_dn=$(dxim -b 'cn=Permissions,cn=ASN-IAM-Central' "(&(objectclass=dxrPermission)(cn=$(echo $permission | sed -e 's/(/\\(/g' -e 's/)/\\)/g')))" 1 | head -1 | cut -d' ' -f2-);
 fi
 
 if [[ -z "${perm_dn}" ]]
 then
-        printf "\n$perm_dn\n";
-        print_to_log "ERR: RC 6 - Role's permission - $permission , not found" | tee -a $logfile;
-        exit 6;
+	printf "\n$perm_dn\n";
+	print_to_log "ERR: RC 6 - Role's permission - $permission , not found" | tee -a $logfile;
+	exit 6;
 fi
 }
 
@@ -92,53 +92,59 @@ printf "dn: $perm_dn\nchangetype: modify\nadd: dxrGroupLink\ndxrGroupLink: $dien
 get_requester(){
 if [[ -n "$who_" ]] && [[ $(echo "$who_" | tr '[:lower:]' '[:upper:]') =~ [A-Z]{1,2}[0-9]{5,6} ]]
 then
-        requester=$(dxim -b 'ou=GCD,cn=Users,cn=ASN-IAM-Central' "(dxmGUID=$who_)" cn | grep ^cn | /opt/DirX/iddirx/bin/decode64.sh | cut -d' ' -f2-);
+	requester=$(dxim -b 'ou=GCD,cn=Users,cn=ASN-IAM-Central' "(dxmGUID=$who_)" cn | grep ^cn | /opt/DirX/iddirx/bin/decode64.sh | cut -d' ' -f2-);
 fi
 
 if [[ -z "${requester}" ]]
 then
-        print_to_log "ERR: RC 7 - Requester doesn't seem to be correct" | tee -a $logfile;
-        exit 7;
+	print_to_log "ERR: RC 7 - Requester doesn't seem to be correct" | tee -a $logfile;
+	exit 7;
 fi
 }
 
 get_parameter_dn(){
 if [[ -n "$parameter" ]]
 then
-        param_dn=$(dxim -b 'cn=TargetSystems,cn=ASN-IAM-Central' "(&(objectclass=dxrTargetSystemGroup)(cn=$parameter)(!(dxmADsGroupType=*)))" 1 | head -1 | cut -d' ' -f2-);
+	param_dn=$(dxim -b 'cn=TargetSystems,cn=ASN-IAM-Central' "(&(objectclass=dxrTargetSystemGroup)(cn=$parameter)(!(dxmADsGroupType=*)))" 1 | head -1 | cut -d' ' -f2-);
 fi
 
 if [[ -z "${param_dn}" ]]
 then
-        print_to_log "ERR: RC 5 - Support group - $parameter , not found" | tee -a $logfile;
-        exit 5;
+	print_to_log "ERR: RC 5 - Support group - $parameter , not found" | tee -a $logfile;
+	exit 5;
 fi
 }
 
 get_domain(){
 if [[ -n "$d" ]]
 then
-        domain=$(echo $d | tr '[:upper:]' '[:lower:]');
-        domina="$(echo ${domains[$domain]} | cut -d'|' -f1)";
-        group_base="$(echo ${domains[$domain]} | cut -d'|' -f3)";
-        pk_group_base="$(echo ${domains[$domain]} | cut -d'|' -f2)";
+	domain=$(echo $d | tr '[:upper:]' '[:lower:]');
+	domina="$(echo ${domains[$domain]} | cut -d'|' -f1)";
+	if [[ -z "${domina}" ]]
+	then
+		print_to_log "ERR: RC 3 - Incorrect DOMAIN - $d" | tee -a $logfile;
+		exit 3;
+	else
+		group_base="$(echo ${domains[$domain]} | cut -d'|' -f3)";
+		pk_group_base="$(echo ${domains[$domain]} | cut -d'|' -f2)";
+	fi
 fi
 }
 
 get_ticket(){
 if [[ "${#t}" -ge 12 && "${#t}" -le 14 && $t =~ ^(INC0|CTASK0|CHG0|TASK0)* ]]
 then
-        ticket=$t;
+	ticket=$t;
 else
-        print_to_log "ERR: RC 8 - Please check the ticket number again." | tee -a $logfile;
-        exit 8;
+	print_to_log "ERR: RC 8 - Please check the ticket number again." | tee -a $logfile;
+	exit 8;
 fi
 }
 
 get_obligation(){
 if [[ -n $o ]]
 then
-        obligation="$(echo ${obligations[$o]} | cut -d'|' -f2 | xargs)";
+	obligation="$(echo ${obligations[$o]} | cut -d'|' -f2 | xargs)";
 fi
 }
 
@@ -210,24 +216,24 @@ server_version=$(grep ^'#' "$s_v" | grep VERSION | cut -d'=' -f2 | cut -d'#' -f1
 
 if [[ "$local_" != "$server_" ]] && [[ $(awk -v n1="$local_version" -v n2="$server_version" 'BEGIN { exit (n1 < n2) }' /dev/null) ]]
 then
-        printf "\n\nIt seems there is a newer version of the script available for download.\nYour version is : $local_verion from $local_\nServer version is : $server_version from $server_ .\n\tDo you whant to update the script now?\n\n\t\t\t[ YES | NO ] / [ Y | N ]\t";
-        read answer;
-        printf "\n\n";
-        if [[ `echo $answer | tr '[:upper:]' '[:lower:]'` == "y" ]] || [[ `echo $answer | tr '[:upper:]' '[:lower:]'` == "yes" ]]
-        then
-                cp -f -u "$s_v" "$0";
-                if [[ "$?" -eq 0 ]]
-                then
-                        print_to_log "Script updated to version $server_version successfully. Please re-run the command, to use updated version." | tee -a $logfile;
-                        exit 0;
-                else
-                        print_to_log "ERR: RC 9 - Installation interrupted abruptly during installation process." | tee -a "$logfile";
-                        exit 9;
-                fi;
-        else
-                printf "\nOK, NOT updating\n\n";
-                print_to_log "Newer version of the script was found, but user declined installation" >> $logfile;
-        fi;
+	printf "\n\nIt seems there is a newer version of the script available for download.\nYour version is : $local_verion from $local_\nServer version is : $server_version from $server_ .\n\tDo you whant to update the script now?\n\n\t\t\t[ YES | NO ] / [ Y | N ]\t"; 
+	read answer; 
+	printf "\n\n"; 
+	if [[ `echo $answer | tr '[:upper:]' '[:lower:]'` == "y" ]] || [[ `echo $answer | tr '[:upper:]' '[:lower:]'` == "yes" ]]
+	then
+		cp -f -u "$s_v" "$0";
+		if [[ "$?" -eq 0 ]]
+		then
+			print_to_log "Script updated to version $server_version successfully. Please re-run the command, to use updated version." | tee -a $logfile;
+			exit 0;
+		else
+			print_to_log "ERR: RC 9 - Installation interrupted abruptly during installation process." | tee -a "$logfile";
+			exit 9;
+		fi;
+	else
+		printf "\nOK, NOT updating\n\n";
+		print_to_log "Newer version of the script was found, but user declined installation" >> $logfile;
+	fi;
 fi;
 fi;
 }
@@ -239,37 +245,37 @@ printf "insert into ggc(name, permission, parameter, ticket, creator, type, desc
 group_type_mapping(){
 if [[ "$type_" -ge 0 ]] && [[ "$type_" -lt 2 ]]
 then
-        declare -a group_type;
-        group_type=('Standard' 'TeamSafe');
-        tejp="${group_type[$type_]}";
+	declare -a group_type;
+	group_type=('Standard' 'TeamSafe');
+	tejp="${group_type[$type_]}";
 else
-        print_to_log "ERR: RC 14 - Incorrect Group Type. Run: \"$(basename $0) -h\" to see the list of available Group Types." | tee -a $logfile; exit 14;
+	print_to_log "ERR: RC 14 - Incorrect Group Type. Run: \"$(basename $0) -h\" to see the list of available Group Types." | tee -a $logfile; exit 14;
 fi;
 }
 
 get_description(){
 if [[ "${#description}" -lt 3 ]] || [[ "${#description}" -gt 300 ]]
 then
-        description=$ticket
+	description=$ticket
 fi;
 }
 
 main(){
 while getopts "n:d:s:r:o:t:w:b:x:h" INPUT
 do
-        case "${INPUT}" in
-                n) gn="${OPTARG}";;
-                d) d="${OPTARG}";;
-                s) parameter="${OPTARG}";;
-                r) permission="${OPTARG}";;
-                o) description="${OPTARG}";;
-                t) t="${OPTARG}";;
-                w) who_="${OPTARG}";;
-                b) o="${OPTARG}";;
-                x) type_=${OPTARG};;
-                h) clear; get_help "$domains" "$obligations"; exit 0;;
-                *) print_to_log "ERR: RC 10 - Incorrectly invoked or incorrect argument. Run: \"$(basename $0) -h\" to see the list of available options." | tee -a $logfile; exit 10; exit 10;;
-        esac
+	case "${INPUT}" in
+		n) gn="${OPTARG}";;
+		d) d="${OPTARG}";;
+		s) parameter="${OPTARG}";;
+		r) permission="${OPTARG}";;
+		o) description="${OPTARG}";;
+		t) t="${OPTARG}";;
+		w) who_="${OPTARG}";;
+		b) o="${OPTARG}";;
+		x) type_=${OPTARG};;
+		h) clear; get_help "$domains" "$obligations"; exit 0;;
+		*) print_to_log "ERR: RC 10 - Incorrectly invoked or incorrect argument. Run: \"$(basename $0) -h\" to see the list of available options." | tee -a $logfile; exit 10; exit 10;;
+	esac
 done
 shift $((OPTIND-1))
 }
@@ -283,7 +289,7 @@ for all in $(dxim '(&(objectclass=dxrTargetSystem)(objectclass=dxrContainer)(dxr
         domains[$(echo $all | cut -d'|' -f1 | tr '[:upper:]' '[:lower:]')]="$(echo $all | cut -d'|' -f2- | sed -e 's/Customer //g')";
         done
 domains['saacon']="Saacon.net|OU=GrpAdm,OU=SIAM,OU=OPFW,OU=Admin,DC=saacon,DC=net|cn=groups,cn=saacon.net,cn=AD,cn=Single TargetSystems,cn=TargetSystems,cn=ASN-IAM-Central";
-
+domains['flender']="Flender|OU=accounts,DC=Flender|cn=groups,cn=Flender,cn=AD,cn=Single TargetSystems,cn=TargetSystems,cn=ASN-IAM-Central";
 
 declare -A obligations;
 for obli in $(dxim '(&(objectClass=dxrObligation)(!(cn=mailbox-enabling)))' cn description | tr -d '\n' | sed -e 's/dn: /\n/g' -e 's/cn: /|/g' -e 's/description: /|/g')
@@ -293,43 +299,44 @@ for obli in $(dxim '(&(objectClass=dxrObligation)(!(cn=mailbox-enabling)))' cn d
 
 if [[ "$#" -ge 10 ]]
 then
-        main "$@";
-        upgrade;
-        get_ticket;
-        get_domain;
-        get_description;
-        get_obligation;
-        get_requester;
-        group_type_mapping;
-        get_parameter_dn;
-        gen_group_name;
-        gen_dien;
-        get_permission_dn;
-        gen_standard_group;
-        if [[ "$?" -eq 0 ]]
-        then
-                result1=$(printf "\n$ldif\n\n" | dxim_a 2>/dev/null | grep -i 'adding');
-                if [[ "$?" -eq 0 ]] && [[ "${#result1}" -gt 1 ]]
-                then
-                        printf "\nGroup $group_name\tcreated\n";
-                        result2=$(update_permission 2>/dev/null | grep -i 'modifying entry');
-                        if [[ "$?" -eq 0 ]] && [[ "${#result2}" -gt 1 ]]
-                        then
-                                printf "Permission $permission modified\n";
-                                insert_adp >/dev/null;
-                                if [[ "$?" -eq 0 ]]
-                                then
-                                        printf "Entry added to GGC table in ADP\n\n";
-                                fi;
-                        fi;
-                fi;
-        fi;
+	main "$@";
+	upgrade;
+	get_ticket;
+	get_domain;
+	get_description;
+	get_obligation;
+	get_requester;
+	group_type_mapping;
+	get_parameter_dn;
+	gen_group_name;
+	gen_dien;
+	get_permission_dn;
+	gen_standard_group;
+	if [[ "$?" -eq 0 ]]
+	then
+		result1=$(printf "\n$ldif\n\n" | dxim_a 2>/dev/null | grep -i 'adding');
+		if [[ "$?" -eq 0 ]] && [[ "${#result1}" -gt 1 ]]
+		then
+			printf "\nGroup $group_name\tcreated\n";
+			result2=$(update_permission 2>/dev/null | grep -i 'modifying entry');
+			if [[ "$?" -eq 0 ]] && [[ "${#result2}" -gt 1 ]]
+			then
+				printf "Permission $permission modified\n";
+				insert_adp >/dev/null;
+				if [[ "$?" -eq 0 ]]
+				then
+					printf "Entry added to GGC table in ADP\n\n";
+				fi;
+			fi;
+		fi;
+	fi;
 elif [[ "$#" -eq 0 ]] || [[ "$#" -eq 1 ]] && [[ "$1" == '-h' ]]
 then
-        get_help "$domains" "$obligations";
-        exit 0;
+	get_help "$domains" "$obligations";
+	exit 0;
 else
-        print_to_log "ERR: RC 10 - Incorrectly invoked or incorrect argument. Run: \"$(basename $0) -h\" to see the list of available options." | tee -a $logfile;
-        exit 10;
+	print_to_log "ERR: RC 10 - Incorrectly invoked or incorrect argument. Run: \"$(basename $0) -h\" to see the list of available options." | tee -a $logfile;
+	exit 10;
 fi
+
 
